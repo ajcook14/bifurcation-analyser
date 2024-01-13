@@ -1,0 +1,11 @@
+__pycache__/
+*.swp
+pythoncapdfiles/*
+capd_test.cpp
+cpp_test.cpp
+*.o
+main
+*.png
+regular*
+special
+test
