@@ -4,11 +4,13 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 
+import os
+
 def rectangles(ax, boxes, facecolor):
 
     rectangles = [Rectangle((i[2], i[0]), i[3] - i[2], i[1] - i[0], linewidth=2) for i in boxes]
 
-    pc = PatchCollection(rectangles, facecolor=facecolor, alpha=0.5, edgecolor='r')
+    pc = PatchCollection(rectangles, facecolor=facecolor, alpha=0.5, edgecolor='k')
 
     ax.add_collection(pc)
 
@@ -24,39 +26,39 @@ if __name__ == '__main__':
     ax.set_xlim(b_bounds[0], b_bounds[1])
     ax.set_ylim(a_bounds[0], a_bounds[1])
 
-    f = open('./regular1')
-    
-    regular_boxes1 = []
+    rng = np.random.default_rng(2)
 
-    while not (line := f.readline()) == '':
+    cnames = list(os.listdir('./components/'))
 
-        regular_boxes1.append( list(map(float, line.strip().split(','))) )
+    cnames.sort()
 
-    f.close()
+    regular_colours = np.linspace(0.1, 1.0, len(cnames))
 
-    f = open('./regular2')
-    
-    regular_boxes2 = []
+    for i, component_name in enumerate(cnames):
 
-    while not (line := f.readline()) == '':
+        f = open(f'./components/{component_name}')
+        
+        boxes = []
 
-        regular_boxes2.append( list(map(float, line.strip().split(','))) )
+        while not (line := f.readline()) == '':
 
-    f.close()
+            boxes.append( list(map(float, line.strip().split(','))) )
 
-    f = open('./special')
-    
-    special_boxes = []
+        f.close()
 
-    while not (line := f.readline()) == '':
+        if component_name == "special":
 
-        special_boxes.append( list(map(float, line.strip().split(','))) )
+            rectangles( ax, boxes, 'r' )
 
-    f.close()
+        elif component_name == "extra_special":
 
-    rectangles(ax, regular_boxes1, 'y')
-    rectangles(ax, regular_boxes2, 'b')
-    rectangles(ax, special_boxes, 'g')
+            rectangles( ax, boxes, 'y' )
+
+        else:
+
+            rectangles( ax, boxes, np.array([0., 0., regular_colours[i]]) )
+
+
 
     """
     a = np.linspace(b_bounds[0], b_bounds[1], 50)
@@ -74,5 +76,5 @@ if __name__ == '__main__':
     ax.set_xlabel('$b$')
     ax.set_ylabel('$a$')
 
-    #plt.savefig('./tanh.png')
+    plt.show()
 

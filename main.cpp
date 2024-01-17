@@ -11,14 +11,6 @@ using namespace capd;
 
 
 
-void error(const char* p, const char* p2=" ")
-{
-
-    cerr << p << ' ' << p2 << '\n';
-    exit(1);
-
-}
-
 void write_vector(IVector& iv, ofstream* to)
 // iv is dimension 2
 {
@@ -114,28 +106,14 @@ int main()
     IMap target = get_target(max_derivative);
 
     //IMap target("par:a,b;var:x;fun:x^3-a*x+b;", max_derivative);
+    //IMap target("par:a,b;var:x;fun:x^4+a*(x^2)+b*x;", max_derivative);
 
     IVector x(1), p(2);
 
+    vector<IVector>::iterator intvec_it;
 
 
-    // initialise file streams
 
-    ofstream regular_stream1("regular1");
-    ofstream regular_stream2("regular2");
-    ofstream special_stream("special");
-
-    if (!regular_stream1) error("cannot open file", "regular1");
-    if (!regular_stream2) error("cannot open file", "regular2");
-    if (!special_stream) error("cannot open file", "special");
-
-    regular_stream1.setf(ios_base::fixed, ios_base::floatfield);
-    regular_stream2.setf(ios_base::fixed, ios_base::floatfield);
-    special_stream.setf(ios_base::fixed, ios_base::floatfield);
-
-    regular_stream1.precision(3);
-    regular_stream2.precision(3);
-    special_stream.precision(3);
 
 
 
@@ -168,24 +146,26 @@ int main()
 
     int newton_verified[regular_components.size()]; // number of zeroes in each component
 
-    x[0] = interval(-1, 1);
+    IVector x_newton;
 
     for (int i = 0; i < regular_components.size(); i++)
     {
 
+        x_newton = x;
+
         p = regular_components[i][0];
         p = midVector(p);
 
-        cout << "\\x = " << x << " and \\p = " << p << endl;
+        cout << "\\x = " << x_newton << " and \\p = " << p << endl;
 
-        while ( (result = newton_method(target, x, p)) == -1 )
+        while ( (result = newton_method(target, x_newton, p)) == -1 )
         {
 
             cout << "Double counted solution" << endl;
 
-            x[0] += interval(0, 1e-5);
+            x_newton[0] += interval(0, 1e-5);
 
-            cout << "\\x = " << x << " and \\p = " << p << endl;
+            cout << "\\x = " << x_newton << " and \\p = " << p << endl;
 
         }
 
@@ -201,42 +181,117 @@ int main()
 
     }
 
-    vector<IVector>::iterator intvec_it;
-
-    for (intvec_it = regular_components[0].begin(); intvec_it != regular_components[0].end(); intvec_it++) write_vector(*intvec_it, &regular_stream1);
-    for (intvec_it = regular_components[1].begin(); intvec_it != regular_components[1].end(); intvec_it++) write_vector(*intvec_it, &regular_stream2);
-    for (intvec_it = special.begin(); intvec_it != special.end(); intvec_it++) write_vector(*intvec_it, &special_stream);
-
-
 
 
     cout << "\nBIFURCATION ORDER:" << endl;
 
-    x[0] = interval(-1, 1);
-    p[0] = interval(1-1e-2, 1+1e-2);
-    p[1] = interval(1e-5, 2e-5);
-
-    cout << "\\x =  " << x << " and \\p = " << p << endl;
-
-    tolerance = 1e-1;
+    tolerance = 1e-2;
 
     int bound;
 
-    if ( (bound = bifurcation_order(target, x, p, max_derivative, tolerance)) == -1 ) {
+    vector<IVector> extra_special, new_special;
 
-        cout << "Failed to find a bound. Try a smaller tolerance or smaller parameter width." << endl;
+    for (intvec_it = special.begin(); intvec_it != special.end(); intvec_it++)
+    {
 
-    } else if ( bound >= 0 ) {
+        p = *intvec_it;
 
-        cout << "Upper bound on number of zeroes is " << bound << endl;
+        if ( (bound = bifurcation_order(target, x, p, max_derivative, tolerance)) == -1 ) {
+
+            cout << "Failed to find a bound for parameters " << p << ". Try a smaller tolerance or smaller parameter width." << endl;
+
+            extra_special.push_back(p);
+
+        } else if ( bound >= 0 ) {
+
+            if (bound > max_derivative) extra_special.push_back(p);
+
+            else new_special.push_back(p);
+
+        }
 
     }
 
+    special = new_special;
+
+    cout << "Number of extra special boxes is " << extra_special.size() << endl;
+
+    //cout << "Upper bound on number of zeroes is " << max_bound << endl;
 
 
-    regular_stream1.close();
-    regular_stream2.close();
-    special_stream.close();
+
+    // write boxes to file streams
+    if ( p.dimension() == 2 )
+    {
+
+        int reg_size = regular_components.size();
+
+        ofstream regular_streams[reg_size];
+
+        stringstream sstm;
+
+        for (int i = 0; i < reg_size; i++)
+        {
+
+            sstm.str("");
+
+            sstm << "components/regular" << i + 1;
+
+            regular_streams[i].open(sstm.str());
+
+            if (!regular_streams[i])
+            {
+
+                cerr << "cannot open file " << sstm.str() << '\n';
+                exit(1);
+
+            }
+
+            regular_streams[i].setf(ios_base::fixed, ios_base::floatfield);
+
+            regular_streams[i].precision(3);
+
+            for (intvec_it = regular_components[i].begin(); intvec_it != regular_components[i].end(); intvec_it++) write_vector(*intvec_it, &(regular_streams[i]));
+
+        }
+
+        sstm.str("");
+        sstm << "components/special";
+        ofstream special_stream(sstm.str());
+        if (!special_stream)
+        {
+
+            cerr << "cannot open file " << sstm.str() << '\n';
+            exit(1);
+
+        }
+        special_stream.setf(ios_base::fixed, ios_base::floatfield);
+        special_stream.precision(3);
+
+        for (intvec_it = special.begin(); intvec_it != special.end(); intvec_it++) write_vector(*intvec_it, &special_stream);
+
+        sstm.str("");
+        sstm << "components/extra_special";
+        ofstream extra_special_stream(sstm.str());
+        if (!extra_special_stream)
+        {
+
+            cerr << "cannot open file " << sstm.str() << '\n';
+            exit(1);
+
+        }
+        extra_special_stream.setf(ios_base::fixed, ios_base::floatfield);
+        extra_special_stream.precision(3);
+
+        for (intvec_it = extra_special.begin(); intvec_it != extra_special.end(); intvec_it++) write_vector(*intvec_it, &extra_special_stream);
+
+        for (int i = 0; i < reg_size; i++) regular_streams[i].close();
+
+        special_stream.close();
+
+        extra_special_stream.close();
+
+    }
 
     return(0);
 

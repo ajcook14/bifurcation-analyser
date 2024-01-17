@@ -7,5 +7,6 @@ cpp_test.cpp
 main
 *.png
 regular*
+components/*
 special
 test

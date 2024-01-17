@@ -123,7 +123,7 @@ void bisection(IMap& target, IVector x, IVector p, vector<IVector>& regular, vec
 
 
 
-int newton_method(IMap& target, IVector& x, IVector& p)
+int newton_method(IMap& target, IVector x, IVector p)
 {
 
     /**
@@ -304,7 +304,7 @@ void connected_components(vector<IVector>& intervals, vector<vector<IVector>>& c
     for (int i = 0; i < intervals.size() - 1; i++)
     {
 
-        if ( !intersectionIsEmpty( intervals[i], intervals[i + 1] ) ) component.push_back(intervals[i + 1]);//component = intervalHull(component, intervals[i + 1]);
+        if ( !intersectionIsEmpty( intervals[i], intervals[i + 1] ) ) component.push_back(intervals[i + 1]);
 
         else {
 
@@ -324,7 +324,7 @@ void connected_components(vector<IVector>& intervals, vector<vector<IVector>>& c
 
 
 
-int bifurcation_order(IMap& target, IVector& x, IVector& p, int max_derivative, double tolerance)
+int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, double tolerance)
 {
 
     /**
@@ -398,170 +398,3 @@ int bifurcation_order(IMap& target, IVector& x, IVector& p, int max_derivative, 
 
 }
 
-/*
-int bifurcation_order(IMap& target, IVector& x, IVector& p, vector<IVector>& feasible, int maxDerivative, double TOL)
-// returns an upper bound on the number of solutions of target in box
-{
-
-    IVector left(1), right(1);
-
-    int dimOut, dimIn;
-    dimOut = dimIn = 1;
-
-    IJet jet(dimOut, dimIn, maxDerivative);
-
-    Multipointer mp;
-
-    target.setParameter(0, p[0]);
-
-
-    // initialise queue
-
-    queue<IVector> bisection_queue;
-
-    bisection_queue.push(x);
-
-    // the following loop produces a cpp vector of intervals (feasible) whose union contains all zeroes of the target, and such that
-    // at least one derivative of order < maxDerivative is non-vanishing on each interval.
-
-    int order;
-
-    while (!bisection_queue.empty())
-    {
-
-        x = bisection_queue.front();
-
-        bisection_queue.pop();
-
-        if ( !containsZero(target(x)) ) continue;
-
-        target(x, jet);
-
-        for (order = 0; order <= maxDerivative; order++)
-        {
-
-            mp = jet.first(order);
-            if ( !containsZero(jet(mp)) ) {
-
-                feasible.push_back(x);
-
-                break;
-
-            }
-
-
-            if ( order == maxDerivative ) {
-
-                if ( maxDiam(x) < TOL ) return(-1);
-
-                subdivide(x, left, right);
-
-                bisection_queue.push(left);
-                bisection_queue.push(right);
-
-            }
-
-        }
-
-    }
-
-    // check for connected components
-
-    std::sort(feasible.begin(), feasible.end(), [](IVector &a, IVector &b) { return(midVector(a)[0].leftBound() < midVector(b)[0].leftBound()); });
-
-    int components[feasible.size()];
-
-    int ci = 0; //component index
-
-    components[0] = 0;
-
-    for (int i = 0; i < feasible.size() - 1; i++)
-    {
-
-        if ( intersectionIsEmpty( feasible[i], feasible[i + 1] ) ) ci++;
-
-        components[i + 1] = ci;
-
-    }
-
-    int c_num = ci + 1; // number of componenets
-
-    cout << "c_num = " << c_num << endl;
-
-    std::for_each(feasible.begin(), feasible.end(), [](IVector const v) { cout << v << endl; });
-
-    int orders[c_num];
-
-    bool break_order;
-
-    int ii = 0; // interval index
-
-    int ii_begin = 0;
-
-    cout << "feasible.size = " << feasible.size() << endl;
-
-    for (int i = 0; i < feasible.size(); i++) cout << components[i];
-    cout << "\n";
-
-    for (ci = 0; ci < c_num; ci++)
-    {
-
-        break_order = false;
-
-        ii_begin = ii;
-
-        for (order = 1; order <= maxDerivative; order++)
-        {
-
-            ii = ii_begin;
-
-            target(feasible[ii], jet);
-            mp = jet.first(order);
-
-            while ( !containsZero(jet(mp)) )
-            {
-
-                //cout << "ii = " << ii << endl;
-
-                ii++;
-
-                if ( ii >= feasible.size() || components[ii] != ci ) {
-
-                    orders[ci] = order;
-
-                    break_order = true;
-
-                    break;
-
-                }
-
-                target(feasible[ii], jet);
-                mp = jet.first(order);
-
-            }
-
-            if ( break_order ) break;
-
-        }
-
-        if ( !break_order ) {
-
-            cout << "bifurcation_order: max derivative exceeded" << endl;
-
-            return(-1);
-
-        }
-
-    }
-
-
-    for (int i = 0; i < c_num; i++) {
-
-        cout << "component = " << i << ", order = " << orders[i] << endl;
-
-    }
-
-    return(0);
-
-}
-*/
