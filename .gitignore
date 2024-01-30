@@ -10,3 +10,4 @@ regular*
 components/*
 special
 test
+.idea/*

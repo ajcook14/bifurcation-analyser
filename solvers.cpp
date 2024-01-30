@@ -9,28 +9,9 @@
 using namespace std;
 using namespace capd;
 
-void cartesian(IVector& a, IVector& b, IVector& product)
-{
-
-    /**
-        Concatenates a and b and puts the result in product.
-    **/
-
-    IVector temp(a.dimension() + b.dimension());
-
-    IVector::iterator intvec_it;
-
-    for (int i = 0; i < a.dimension(); i++) temp[i] = a[i];
-
-    for (int i = 0; i < b.dimension(); i++) temp[i + a.dimension()] = b[i];
-
-    product = temp;
-
-}
 
 
-
-int bisection_aux(IMap& target, IVector x, IVector& p, double tolerance)
+int bisection_aux(IMap& target, IVector x, IVector p, double tolerance)
 {
 
     /**
@@ -40,7 +21,9 @@ int bisection_aux(IMap& target, IVector x, IVector& p, double tolerance)
 
     IVector left, right;
 
-    for (int i = 0; i < p.dimension(); i++) target.setParameter(i, p[i]);
+    for (int i = 0; i < p.dimension(); i++)
+
+        target.setParameter(i, p[i]);
 
     queue<IVector> bisection_queue;
 
@@ -106,7 +89,9 @@ void bisection(IMap& target, IVector x, IVector p, vector<IVector>& regular, vec
 
         }
 
-        if (maxDiam(p) < tolerance) special.push_back(p);
+        if (maxDiam(p) < tolerance)
+
+            special.push_back(p);
 
         else {
 

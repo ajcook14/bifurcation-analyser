@@ -90,43 +90,20 @@ void find_connected_components(vector<IVector>& intervals, vector<vector<IVector
 
     }
 
-    components.push_back(component);
+    if ( n > 0 ) components.push_back(component);
 
 }
 
-int main()
+void manual(IMap& target, int max_derivative, IVector x, IVector p, double tolerance)
 {
 
-    int max_derivative = 3; // maximum multiplicity
-
-    int result;
-
-    double tolerance;
-
-    IMap target = get_target(max_derivative);
-
-    //IMap target("par:a,b;var:x;fun:x^3-a*x+b;", max_derivative);
-    //IMap target("par:a,b;var:x;fun:x^4+a*(x^2)+b*x;", max_derivative);
-
-    IVector x(1), p(2);
-
     vector<IVector>::iterator intvec_it;
-
-
-
-
 
 
 
     cout << "\nBISECTION:" << endl;
 
     vector<IVector> regular, special;
-
-    tolerance = 1e-2;
-
-    x[0] = interval(-1, 1);   // phase variable
-    p[0] = interval(0, 2);
-    p[1] = interval(-1, 1);
 
     cout << "\\x = " << x << " and \\p =  " << p << endl;
     bisection(target, x, p, regular, special, tolerance);
@@ -145,6 +122,8 @@ int main()
     cout << "\nNEWTON:" << endl;
 
     int newton_verified[regular_components.size()]; // number of zeroes in each component
+
+    int result;
 
     IVector x_newton;
 
@@ -185,8 +164,6 @@ int main()
 
     cout << "\nBIFURCATION ORDER:" << endl;
 
-    tolerance = 1e-2;
-
     int bound;
 
     vector<IVector> extra_special, new_special;
@@ -216,11 +193,12 @@ int main()
 
     cout << "Number of extra special boxes is " << extra_special.size() << endl;
 
-    //cout << "Upper bound on number of zeroes is " << max_bound << endl;
-
 
 
     // write boxes to file streams
+
+    int stream_precision = 6;
+
     if ( p.dimension() == 2 )
     {
 
@@ -249,7 +227,7 @@ int main()
 
             regular_streams[i].setf(ios_base::fixed, ios_base::floatfield);
 
-            regular_streams[i].precision(3);
+            regular_streams[i].precision(stream_precision);
 
             for (intvec_it = regular_components[i].begin(); intvec_it != regular_components[i].end(); intvec_it++) write_vector(*intvec_it, &(regular_streams[i]));
 
@@ -266,7 +244,7 @@ int main()
 
         }
         special_stream.setf(ios_base::fixed, ios_base::floatfield);
-        special_stream.precision(3);
+        special_stream.precision(stream_precision);
 
         for (intvec_it = special.begin(); intvec_it != special.end(); intvec_it++) write_vector(*intvec_it, &special_stream);
 
@@ -281,7 +259,7 @@ int main()
 
         }
         extra_special_stream.setf(ios_base::fixed, ios_base::floatfield);
-        extra_special_stream.precision(3);
+        extra_special_stream.precision(stream_precision);
 
         for (intvec_it = extra_special.begin(); intvec_it != extra_special.end(); intvec_it++) write_vector(*intvec_it, &extra_special_stream);
 
@@ -292,6 +270,115 @@ int main()
         extra_special_stream.close();
 
     }
+
+}
+
+
+
+int automatic(IMap& target, int max_derivative, IVector x, IVector p, double tolerance)
+{
+
+    /**
+        Recursively verifies that target has no more than max_derivative zeroes over \x for any parameters in \p.
+    **/
+
+    vector<IVector>::iterator intvec_it;
+
+    cout << "\\x = " << x << " and \\p =  " << p << endl;
+
+
+
+    // BISECTION //
+
+    vector<IVector> regular, special;
+
+    bisection(target, x, p, regular, special, tolerance);
+
+    vector<vector<IVector>> regular_components;
+
+    find_connected_components(regular, regular_components);
+
+
+
+    // NEWTON //
+
+    int result;
+
+    IVector x_newton;
+
+    for (int i = 0; i < regular_components.size(); i++)
+    {
+
+        x_newton = x;
+
+        p = regular_components[i][0];
+        p = midVector(p);
+
+        while ( (result = newton_method(target, x_newton, p)) == -1 ) x_newton[0] += interval(0, 1e-5);
+
+        if ( result == -2 ) {
+
+            cout << "Couldn't resolve solutions - try a smaller inflation or different parameters" << endl;
+
+            return(-2);
+
+        } else if ( result > max_derivative ) {
+
+            cout << "Newton-verified number of solutions for parameters " << p << " is " << result << ". Terminating." << endl;
+
+            return(-1);
+
+        }
+
+    }
+
+
+
+    // BIFURCATION ORDER //
+
+    int bound, error_code;
+
+    double tol_factor = 3;
+
+    for (intvec_it = special.begin(); intvec_it != special.end(); intvec_it++)
+    {
+
+        p = *intvec_it;
+
+        if ( (bound = bifurcation_order(target, x, p, max_derivative, tolerance)) == -1 ) {
+
+            if ( (error_code = automatic(target, max_derivative, x, p, tolerance/tol_factor)) < 0 ) return(error_code);
+
+        }
+
+        else if ( bound > max_derivative ) if ( (error_code = automatic(target, max_derivative, x, p, tolerance/tol_factor)) < 0 ) return(error_code);
+
+    }
+
+    return(0);
+
+}
+
+int main()
+{
+
+    int max_derivative = 3; // maximum multiplicity
+
+    IMap target = get_target(max_derivative);
+
+    //IMap target("par:a,b;var:x;fun:x^3-a*x+b;", max_derivative);
+    //IMap target("par:a,b;var:x;fun:x^4+a*(x^2)+b*x;", max_derivative);
+
+    IVector x(1), p(2);
+
+    x[0] = interval(-1., 1.);   // phase variable
+    p[0] = interval(0., 2.);
+    p[1] = interval(-1., 1.);
+
+    double tolerance = 1e-2;
+
+    int result = automatic(target, max_derivative, x, p, tolerance); cout << "Result is " << result << endl;
+    //manual(target, max_derivative, x, p, tolerance);
 
     return(0);
 

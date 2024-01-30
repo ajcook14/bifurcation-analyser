@@ -12,6 +12,18 @@ Node tanh(Node x) {
 
 }
 
+Node cosh(Node x) {
+
+    return (exp(x) + exp(-x))/2;
+
+}
+
+Node dtanh(Node x) {
+
+    return( 1/((cosh(x))^2) );
+
+}
+
 void neuron(Node t,
         Node in[], int dimIn,
         Node out[], int dimOut,
@@ -22,7 +34,10 @@ void neuron(Node t,
     Node a = params[0];
     Node b = params[1];
 
-    out[0] = tanh((a * x) + b) - x;
+    //out[0] = tanh((a * x) + b) - x;
+    //out[0] = (a * dtanh(a * (x - b))) - (1./2.);
+    out[0] = tanh(2 * (x + 1)) + tanh(a * (x - b)) - x;
+
 }
 
 IMap get_target(int maxDerivative)
