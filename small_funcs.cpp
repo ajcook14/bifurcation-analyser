@@ -1,4 +1,5 @@
 #include "capd/capdlib.h"
+#include "small_funcs.h"
 
 #include <iostream>
 #include <fstream>

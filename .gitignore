@@ -2,7 +2,9 @@ __pycache__/
 *.swp
 pythoncapdfiles/*
 capd_test.cpp
+capd_test
 cpp_test.cpp
+cpp_test
 *.o
 main
 *.png

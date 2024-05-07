@@ -2,6 +2,7 @@
 #include "capd/newton/Newton.h"
 
 #include "small_funcs.h"
+#include "solvers.h"
 
 #include <iostream>
 #include <queue>
@@ -113,13 +114,14 @@ int newton_method(IMap& target, IVector x, IVector p)
 
     /**
         Returns the exact number of solutions in the initial interval x or a negative value if solutions could not be resolved.
+        Assumes there are no bifurcations in p.
     **/
 
     for (int i = 0; i < p.dimension(); i++) target.setParameter(i, p[i]);
 
     IVector midpoint, N, left, right, epsilon(1);
 
-    epsilon[0] = interval(-1e-10, 1e-10);
+    epsilon[0] = interval(-1e-17, 1e-17);
 
     queue<IVector> bisection_queue;
 
@@ -136,7 +138,7 @@ int newton_method(IMap& target, IVector x, IVector p)
 
         bisection_queue.pop();
 
-        if ( min_dim(x) < 4 * width(epsilon[0]) ) return(-2);   // check min dimension of x is at least twice width(epsilon)
+        if ( min_dim(x) < 4 * width(epsilon[0]) ) return(NEWTON_EPSILON_WIDTH);   // check min dimension of x is at least twice width(epsilon)
 
         if ( !containsZero(target(x)) ) continue;
 
@@ -165,13 +167,19 @@ int newton_method(IMap& target, IVector x, IVector p)
 
         // all other cases:
 
-        subdivide(x, left, right);
+        if ( subset(x, N) ) {
 
-        left += epsilon;
-        right += epsilon;
+            subdivide(x, left, right);
 
-        bisection_queue.push(left);
-        bisection_queue.push(right);
+            bisection_queue.push(left);
+            bisection_queue.push(right);
+
+        }
+
+        //left += epsilon;
+        //right += epsilon;
+
+        bisection_queue.push(intersection(N, x));
 
     }
 
@@ -189,7 +197,7 @@ int newton_method(IMap& target, IVector x, IVector p)
 
             if ( !containsZero(target(intersection(*i, *j))) ) continue;
 
-            return(-1); // double counted solution
+            return(NEWTON_DOUBLE_COUNT); // double counted solution
 
         }
 
@@ -201,7 +209,7 @@ int newton_method(IMap& target, IVector x, IVector p)
 
 
 
-double total_measure(vector<IVector>& intervals)    // assumes the measure of the union equals the sum of the measures
+double total_measure(vector<IVector>& intervals)    // assumes intervals are pairwise disjoint
 {
 
     double measure = 0;
@@ -240,6 +248,8 @@ void refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
 
     do {
 
+        assert(!intervals.empty());
+
         measure = total_measure(intervals);
 
         temp.clear();
@@ -262,6 +272,8 @@ void refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
         }
 
         difference = measure - total_measure(intervals);
+
+        //if (total_measure(intervals) == 0.) exit(0); // can we do this?
 
     } while ( difference > tolerance || difference == 0 );
 
@@ -356,7 +368,7 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
 
             n_intervals = 0;
 
-            for (interval_it = (*comp_it).begin(); interval_it != (*comp_it).end(); interval_it++)
+            for (interval_it = comp_it->begin(); interval_it != comp_it->end(); interval_it++)
             {
 
                 target(*interval_it, jet);
@@ -367,7 +379,7 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
 
             }
 
-            if ( n_intervals == (*comp_it).size() ) {
+            if ( n_intervals == comp_it->size() ) {
 
                 estimate += order;
 

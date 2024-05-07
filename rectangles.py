@@ -18,10 +18,10 @@ def rectangles(ax, boxes, facecolor):
 
 if __name__ == '__main__':
 
-    a_bounds = (0, 2)
-    b_bounds = (-1, 1)
+    a_bounds = (-5, 5)
+    b_bounds = (-5, 5)
 
-    fig, ax = plt.subplots(figsize=(16, 16))
+    fig, ax = plt.subplots(figsize=(20, 20))
 
     ax.set_xlim(b_bounds[0], b_bounds[1])
     ax.set_ylim(a_bounds[0], a_bounds[1])

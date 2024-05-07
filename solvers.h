@@ -1,3 +1,6 @@
+#define NEWTON_DOUBLE_COUNT -1
+#define NEWTON_EPSILON_WIDTH -2
+
 using namespace capd;
 using namespace std;
 

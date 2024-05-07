@@ -5,13 +5,13 @@ all: main
 main.o: main.cpp solvers.h neuron.h
 	g++ -O2 main.cpp -c -o main.o -frounding-math -D__USE_FILIB__ -I/usr/local/include
 
-small_funcs.o: small_funcs.cpp
+small_funcs.o: small_funcs.cpp small_funcs.h
 	g++ -O2 small_funcs.cpp -c -o small_funcs.o -frounding-math -D__USE_FILIB__ -I/usr/local/include
 
-solvers.o: solvers.cpp small_funcs.h
+solvers.o: solvers.cpp solvers.h small_funcs.h
 	g++ -O2 solvers.cpp -c -o solvers.o -frounding-math -D__USE_FILIB__ -I/usr/local/include
 
-neuron.o: neuron.cpp
+neuron.o: neuron.cpp neuron.h
 	g++ -O2 neuron.cpp -c -o neuron.o -frounding-math -D__USE_FILIB__ -I/usr/local/include
 
 main: main.o small_funcs.o solvers.o neuron.o

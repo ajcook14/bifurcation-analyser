@@ -1,7 +1,7 @@
 #include "capd/capdlib.h"
 
-#include "./solvers.h"
-#include "./neuron.h"
+#include "solvers.h"
+#include "neuron.h"
 
 #include <iostream>
 #include <fstream>
@@ -94,7 +94,7 @@ void find_connected_components(vector<IVector>& intervals, vector<vector<IVector
 
 }
 
-void manual(IMap& target, int max_derivative, IVector x, IVector p, double tolerance)
+void manual(IMap& target, int max_number, int max_derivative, IVector x, IVector p, double tolerance)
 {
 
     vector<IVector>::iterator intvec_it;
@@ -181,7 +181,7 @@ void manual(IMap& target, int max_derivative, IVector x, IVector p, double toler
 
         } else if ( bound >= 0 ) {
 
-            if (bound > max_derivative) extra_special.push_back(p);
+            if (bound > max_number) extra_special.push_back(p);
 
             else new_special.push_back(p);
 
@@ -275,11 +275,11 @@ void manual(IMap& target, int max_derivative, IVector x, IVector p, double toler
 
 
 
-int automatic(IMap& target, int max_derivative, IVector x, IVector p, double tolerance)
+int automatic(IMap& target, int max_number, int max_derivative, IVector x, IVector p, double tolerance)
 {
 
     /**
-        Recursively verifies that target has no more than max_derivative zeroes over \x for any parameters in \p.
+        Recursively verifies that target has no more than max_number zeroes over \x for any parameters in \p.
     **/
 
     vector<IVector>::iterator intvec_it;
@@ -314,15 +314,15 @@ int automatic(IMap& target, int max_derivative, IVector x, IVector p, double tol
         p = regular_components[i][0];
         p = midVector(p);
 
-        while ( (result = newton_method(target, x_newton, p)) == -1 ) x_newton[0] += interval(0, 1e-5);
+        while ( (result = newton_method(target, x_newton, p)) == NEWTON_DOUBLE_COUNT ) x_newton[0] += interval(0, 1e-5);
 
-        if ( result == -2 ) {
+        if ( result == NEWTON_EPSILON_WIDTH ) {
 
             cout << "Couldn't resolve solutions - try a smaller inflation or different parameters" << endl;
 
             return(-2);
 
-        } else if ( result > max_derivative ) {
+        } else if ( result > max_number ) {
 
             cout << "Newton-verified number of solutions for parameters " << p << " is " << result << ". Terminating." << endl;
 
@@ -345,13 +345,13 @@ int automatic(IMap& target, int max_derivative, IVector x, IVector p, double tol
 
         p = *intvec_it;
 
-        if ( (bound = bifurcation_order(target, x, p, max_derivative, tolerance)) == -1 ) {
+        bound = bifurcation_order(target, x, p, max_derivative, tolerance);
 
-            if ( (error_code = automatic(target, max_derivative, x, p, tolerance/tol_factor)) < 0 ) return(error_code);
+        if ( bound == -1 || bound > max_number )    // need to subdivide
 
-        }
+            if ( (error_code = automatic(target, max_number, max_derivative, x, p, tolerance/tol_factor)) < 0 )
 
-        else if ( bound > max_derivative ) if ( (error_code = automatic(target, max_derivative, x, p, tolerance/tol_factor)) < 0 ) return(error_code);
+                return(error_code);
 
     }
 
@@ -364,21 +364,26 @@ int main()
 
     int max_derivative = 3; // maximum multiplicity
 
+    int max_number = 5;
+
     IMap target = get_target(max_derivative);
+    //IMap target("par:a,b,c;var:x;fun:(a*x)+(b*(x^2))+(c*(x^3));", max_derivative);
 
-    //IMap target("par:a,b;var:x;fun:x^3-a*x+b;", max_derivative);
-    //IMap target("par:a,b;var:x;fun:x^4+a*(x^2)+b*x;", max_derivative);
+    IVector x(1), p(3);
 
-    IVector x(1), p(2);
+    const double R = 0.3;
+    interval radius = interval(-R, R);
 
-    x[0] = interval(-1., 1.);   // phase variable
-    p[0] = interval(0., 2.);
-    p[1] = interval(-1., 1.);
+    x[0] = interval(-R - 0.001, R);   // phase variable
 
-    double tolerance = 1e-2;
+    p[0] = interval(-1.) + radius;
+    p[1] = interval(2.) + radius;
+    p[2] = interval(1.) + radius;
 
-    int result = automatic(target, max_derivative, x, p, tolerance); cout << "Result is " << result << endl;
-    //manual(target, max_derivative, x, p, tolerance);
+    double tolerance = 1e-1;
+
+    int result = automatic(target, max_number, max_derivative, x, p, tolerance); cout << "Result is " << result << endl;
+    //manual(target, max_number, max_derivative, x, p, tolerance);
 
     return(0);
 
