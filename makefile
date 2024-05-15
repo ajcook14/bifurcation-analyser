@@ -1,24 +1,22 @@
-#g++ -O2 bisection.cpp -o bisection `capd-config --cflags --libs`
-#-frounding-math -D__USE_FILIB__ -frounding-math -I/usr/local/include -L/usr/local/lib -lcapd -lboost_filesystem -lboost_system -lboost_regex
 all: main
 
 main.o: main.cpp solvers.h neuron.h
-	g++ -O2 main.cpp -c -o main.o -frounding-math -D__USE_FILIB__ -I/usr/local/include
+	g++ main.cpp -c -o main.o -O2 `capd-config --cflags`
 
 small_funcs.o: small_funcs.cpp small_funcs.h
-	g++ -O2 small_funcs.cpp -c -o small_funcs.o -frounding-math -D__USE_FILIB__ -I/usr/local/include
+	g++ small_funcs.cpp -c -o small_funcs.o -O2 `capd-config --cflags`
 
 solvers.o: solvers.cpp solvers.h small_funcs.h
-	g++ -O2 solvers.cpp -c -o solvers.o -frounding-math -D__USE_FILIB__ -I/usr/local/include
+	g++ solvers.cpp -c -o solvers.o -O2 `capd-config --cflags`
 
 neuron.o: neuron.cpp neuron.h
-	g++ -O2 neuron.cpp -c -o neuron.o -frounding-math -D__USE_FILIB__ -I/usr/local/include
+	g++ neuron.cpp -c -o neuron.o -O2 `capd-config --cflags`
 
 main: main.o small_funcs.o solvers.o neuron.o
-	g++ $? -o $@ -L/usr/local/lib -lcapd -lboost_filesystem -lboost_system -lboost_regex
+	g++ $? -o $@ `capd-config --libs`
 
 test: capd_test.cpp
-	g++ -O2 $? -o $@ -frounding-math -D__USE_FILIB__ -frounding-math -I/usr/local/include -L/usr/local/lib -lcapd -lboost_filesystem -lboost_system -lboost_regex
+	g++ $? -o $@ -O2 `capd-config --cflags --libs`
 
 clean:
 	rm -f *.o main test

@@ -3,6 +3,7 @@
 
 #include "small_funcs.h"
 #include "solvers.h"
+#include "capd_error.h"
 
 #include <iostream>
 #include <queue>
@@ -59,19 +60,25 @@ int bisection_aux(IMap& target, IVector x, IVector p, double tolerance)
 }
 
 
-void bisection(IMap& target, IVector x, IVector p, vector<IVector>& regular, vector<IVector>& special, double tolerance)
+void bisection(IMap& target, IVector x, State& state)
 {
 
     /**
-        Eliminates all intervals in parameter space larger than tolerance that don't contain bifurcations and places them in regular.
-        Places remaining intervals in special.
+        Subdivides intervals in state.special and eliminates all intervals larger than state.tolerance that don't contain bifurcations and places them in state.regular.
+        Places remaining intervals in state.special.
     **/
 
-    IVector left, right;
+    IVector left, right, p;
+
+    vector<IVector> new_special;
 
     queue<IVector> bisection_queue;
 
-    bisection_queue.push(p);
+    for_each (state.special.begin(), state.special.end(), [&bisection_queue](IVector p) {
+
+        bisection_queue.push(p);
+
+    });
 
     // interval bisection
 
@@ -82,19 +89,15 @@ void bisection(IMap& target, IVector x, IVector p, vector<IVector>& regular, vec
 
         bisection_queue.pop();
 
-        if ( bisection_aux(target, x, p, tolerance) == 0 ) {
+        if ( bisection_aux(target, x, p, state.tolerance) == 0 ) {
 
-            regular.push_back(p);
+            state.regular.push_back(p);
 
-            continue;
+        } else if (maxDiam(p) < state.tolerance) {
 
-        }
+            new_special.push_back(p);
 
-        if (maxDiam(p) < tolerance)
-
-            special.push_back(p);
-
-        else {
+        } else {
 
             subdivide(p, left, right);
 
@@ -104,6 +107,10 @@ void bisection(IMap& target, IVector x, IVector p, vector<IVector>& regular, vec
         }
 
     }
+
+    state.special.clear();
+
+    state.special = new_special;
 
 }
 
@@ -228,7 +235,7 @@ double total_measure(vector<IVector>& intervals)    // assumes intervals are pai
 
 
 
-void refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
+int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
 {
 
     /**
@@ -248,7 +255,9 @@ void refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
 
     do {
 
-        assert(!intervals.empty());
+        if (intervals.empty())
+
+            return(ERROR_NO_BIFURCATION);
 
         measure = total_measure(intervals);
 
@@ -276,6 +285,8 @@ void refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
         //if (total_measure(intervals) == 0.) exit(0); // can we do this?
 
     } while ( difference > tolerance || difference == 0 );
+
+    return(0);
 
 }
 
@@ -336,7 +347,11 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
 
     feasible.push_back(x);
 
-    refine_measure(target, feasible, tolerance);
+    int error;
+
+    if ( (error = refine_measure(target, feasible, tolerance)) < 0 )
+
+        return(error);
 
     vector<vector<IVector>> components;
 
@@ -364,7 +379,9 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
         for (int order = 1; order <= max_derivative + 1; order++)
         {
 
-            if ( order == max_derivative + 1 ) return(-1);
+            if ( order == max_derivative + 1 )
+
+                return(ERROR_MAX_DERIVATIVE);
 
             n_intervals = 0;
 

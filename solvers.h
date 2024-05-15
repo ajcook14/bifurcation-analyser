@@ -1,10 +1,19 @@
-#define NEWTON_DOUBLE_COUNT -1
-#define NEWTON_EPSILON_WIDTH -2
-
 using namespace capd;
 using namespace std;
 
-void bisection(IMap& target, IVector x, IVector p, vector<IVector>& regular, vector<IVector>& special, double tolerance);
+struct State {
+
+    vector<IVector> regular;    // contains only intervals in parameter space with no bifurcations
+
+    vector<IVector> special;    // contains intervals in parameter space that might contain bifurcations
+
+    vector<IVector> verified;   // intervals verified to have no more than max_number fixed points
+
+    double tolerance;
+
+};
+
+void bisection(IMap& target, IVector x, State& state);
 
 int newton_method(IMap& target, IVector x, IVector p);
 

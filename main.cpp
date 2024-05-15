@@ -2,6 +2,7 @@
 
 #include "solvers.h"
 #include "neuron.h"
+#include "capd_error.h"
 
 #include <iostream>
 #include <fstream>
@@ -94,6 +95,92 @@ void find_connected_components(vector<IVector>& intervals, vector<vector<IVector
 
 }
 
+void bifurcation_order_wrapper(IMap& target, State& state, IVector x, int max_number, int max_derivative)
+{
+
+    /**
+        Sorts through intervals in state.special. Either moves them to state.regular, state.verified, or leaves them in state.special, depending on the output of bifurcation_order. Does not subdivide.
+    **/
+
+    vector<IVector> new_special;
+
+    int bound;
+
+    for_each (state.special.begin(), state.special.end(), [&](IVector p) {
+
+        bound = bifurcation_order(target, x, p, max_derivative, state.tolerance);
+
+        if ( bound == ERROR_NO_BIFURCATION )
+
+            state.regular.push_back(p);
+
+        else if ( bound == ERROR_MAX_DERIVATIVE || bound > max_number )
+
+            new_special.push_back(p);
+
+        else
+
+            state.verified.push_back(p);
+
+    });
+
+    state.special.clear();
+
+    state.special = new_special;
+
+}
+
+int newton_wrapper(IMap& target, vector<vector<IVector>>& regular_components, int max_number, IVector x, bool verbose)
+{
+
+    /**
+        Verifies the conjectured maximum number of solutions, max_number, for a single point in each component in regular_components.
+    **/
+
+    int result;
+
+    IVector x_newton, p;
+
+    for (int i = 0; i < regular_components.size(); i++)
+    {
+
+        x_newton = x;
+
+        p = regular_components[i][0];
+        p = midVector(p);
+
+        while ( (result = newton_method(target, x_newton, p)) == NEWTON_DOUBLE_COUNT )
+        {
+
+            if(verbose) cout << "Double counted solution" << endl;
+
+            x_newton[0] += interval(0, 1e-5);
+
+            if(verbose) cout << "\\x = " << x_newton << " and \\p = " << p << endl;
+
+        }
+
+        if ( result == NEWTON_EPSILON_WIDTH ) {
+
+            if(verbose) cout << "Couldn't resolve solutions - try a smaller inflation or different parameters" << endl;
+
+            return(NEWTON_EPSILON_WIDTH);
+
+         } else if ( result > max_number ) {
+
+            if(verbose) cout << "Newton-verified number of solutions for parameters " << p << " is " << result << ". Terminating." << endl;
+
+            return(-3);
+
+        }
+
+    }
+
+    return(0);
+
+}
+
+/*
 void manual(IMap& target, int max_number, int max_derivative, IVector x, IVector p, double tolerance)
 {
 
@@ -121,44 +208,7 @@ void manual(IMap& target, int max_number, int max_derivative, IVector x, IVector
 
     cout << "\nNEWTON:" << endl;
 
-    int newton_verified[regular_components.size()]; // number of zeroes in each component
-
-    int result;
-
-    IVector x_newton;
-
-    for (int i = 0; i < regular_components.size(); i++)
-    {
-
-        x_newton = x;
-
-        p = regular_components[i][0];
-        p = midVector(p);
-
-        cout << "\\x = " << x_newton << " and \\p = " << p << endl;
-
-        while ( (result = newton_method(target, x_newton, p)) == -1 )
-        {
-
-            cout << "Double counted solution" << endl;
-
-            x_newton[0] += interval(0, 1e-5);
-
-            cout << "\\x = " << x_newton << " and \\p = " << p << endl;
-
-        }
-
-        if ( result == -2 ) cout << "Couldn't resolve solutions - try a smaller inflation or different parameters" << endl;
-
-        else {
-
-            cout << "Newton-verified number of solutions in component " << i << " is " << result << "." << endl;
-
-            newton_verified[i] = result;
-
-        }
-
-    }
+    newton_wrapper(target, max_number, x, regular_components, true);
 
 
 
@@ -229,7 +279,9 @@ void manual(IMap& target, int max_number, int max_derivative, IVector x, IVector
 
             regular_streams[i].precision(stream_precision);
 
-            for (intvec_it = regular_components[i].begin(); intvec_it != regular_components[i].end(); intvec_it++) write_vector(*intvec_it, &(regular_streams[i]));
+            for (intvec_it = regular_components[i].begin(); intvec_it != regular_components[i].end(); intvec_it++)
+
+                write_vector(*intvec_it, &(regular_streams[i]));
 
         }
 
@@ -272,90 +324,38 @@ void manual(IMap& target, int max_number, int max_derivative, IVector x, IVector
     }
 
 }
+*/
 
 
-
-int automatic(IMap& target, int max_number, int max_derivative, IVector x, IVector p, double tolerance)
+int automatic(IMap& target, IVector x, IVector p, int max_number, int max_derivative, double tolerance)
 {
 
-    /**
-        Recursively verifies that target has no more than max_number zeroes over \x for any parameters in \p.
-    **/
+    State state;
 
-    vector<IVector>::iterator intvec_it;
+    state.special.push_back(p);
 
-    cout << "\\x = " << x << " and \\p =  " << p << endl;
+    state.tolerance = tolerance;
+
+    do {
+
+        bisection(target, x, state); // subdivides special boxes
+
+        bifurcation_order_wrapper(target, state, x, max_number, max_derivative);
 
 
+        state.tolerance /= 2.;
 
-    // BISECTION //
+    } while (!state.special.empty() && state.tolerance > 1e-5);
 
-    vector<IVector> regular, special;
+    if (!state.special.empty())
 
-    bisection(target, x, p, regular, special, tolerance);
+        return(AUTO_TOLERANCE);
 
     vector<vector<IVector>> regular_components;
 
-    find_connected_components(regular, regular_components);
+    find_connected_components(state.regular, regular_components);
 
-
-
-    // NEWTON //
-
-    int result;
-
-    IVector x_newton;
-
-    for (int i = 0; i < regular_components.size(); i++)
-    {
-
-        x_newton = x;
-
-        p = regular_components[i][0];
-        p = midVector(p);
-
-        while ( (result = newton_method(target, x_newton, p)) == NEWTON_DOUBLE_COUNT ) x_newton[0] += interval(0, 1e-5);
-
-        if ( result == NEWTON_EPSILON_WIDTH ) {
-
-            cout << "Couldn't resolve solutions - try a smaller inflation or different parameters" << endl;
-
-            return(-2);
-
-        } else if ( result > max_number ) {
-
-            cout << "Newton-verified number of solutions for parameters " << p << " is " << result << ". Terminating." << endl;
-
-            return(-1);
-
-        }
-
-    }
-
-
-
-    // BIFURCATION ORDER //
-
-    int bound, error_code;
-
-    double tol_factor = 3;
-
-    for (intvec_it = special.begin(); intvec_it != special.end(); intvec_it++)
-    {
-
-        p = *intvec_it;
-
-        bound = bifurcation_order(target, x, p, max_derivative, tolerance);
-
-        if ( bound == -1 || bound > max_number )    // need to subdivide
-
-            if ( (error_code = automatic(target, max_number, max_derivative, x, p, tolerance/tol_factor)) < 0 )
-
-                return(error_code);
-
-    }
-
-    return(0);
+    return(newton_wrapper(target, regular_components, max_number, x, false));
 
 }
 
@@ -382,7 +382,7 @@ int main()
 
     double tolerance = 1e-1;
 
-    int result = automatic(target, max_number, max_derivative, x, p, tolerance); cout << "Result is " << result << endl;
+    int result = automatic(target, x, p, max_number, max_derivative, tolerance); cout << "Result is " << result << endl;
     //manual(target, max_number, max_derivative, x, p, tolerance);
 
     return(0);
