@@ -1,5 +1,6 @@
 #include "capd/capdlib.h"
 
+#include "main.h"
 #include "solvers.h"
 #include "neuron.h"
 #include "capd_error.h"
@@ -21,77 +22,17 @@ void write_vector(IVector& iv, ofstream* to)
 
 }
 
-void find_connected_components(vector<IVector>& intervals, vector<vector<IVector>>& components)
+void update_statistics(int bound, int max_number)
 {
 
-    /**
-        Writes the connected components of intervals to components.
-        The vector intervals will get "sorted" into connected components.
-    **/
-
-    int n = intervals.size();
-
-    int a[n];
-
-    int c_index = 1;
-
-    int k = 0;  // end index of current component
-
-    for (int i = 0; i < n; i++) {
-
-        a[i] = c_index;
-
-        for (int j = k + 1; j < n; j++) {
-
-            if ( !intersectionIsEmpty( intervals[i], intervals[j] ) ) {
-
-                k++;
-
-                std::swap( intervals[k], intervals[j] );
-
-            }
-
-        }
-
-        if (k == i) {
-
-            if (i < n) {
-
-                c_index++;
-
-                k++;
-
-            }
-
-            else break;
-
-        }
-
-    }
-
-    // now write to components
-
-    c_index = 1;
-
-    vector<IVector> component;
-
-    for (int i = 0; i < n; i++) {
-
-        if (a[i] > c_index) {
-
-            components.push_back(component);
-
-            component.clear();
-
-            c_index++;
-
-        }
-
-        component.push_back(intervals[i]);
-
-    }
-
-    if ( n > 0 ) components.push_back(component);
+    if ( bound == ERROR_NO_BIFURCATION )
+        statistics.no_bifurcation++;
+    else if ( bound == ERROR_MAX_DERIVATIVE )
+        statistics.max_derivative++;
+    else if ( bound == ERROR_MAX_SUBDIVISIONS )
+        statistics.max_subdivisions++;
+    else if ( bound > max_number )
+        statistics.max_number++;
 
 }
 
@@ -110,11 +51,13 @@ void bifurcation_order_wrapper(IMap& target, State& state, IVector x, int max_nu
 
         bound = bifurcation_order(target, x, p, max_derivative, state.tolerance);
 
+        update_statistics(bound, max_number);
+
         if ( bound == ERROR_NO_BIFURCATION )
 
             state.regular.push_back(p);
 
-        else if ( bound == ERROR_MAX_DERIVATIVE || bound > max_number )
+        else if ( bound == ERROR_MAX_DERIVATIVE || bound == ERROR_MAX_SUBDIVISIONS || bound > max_number )
 
             new_special.push_back(p);
 
@@ -344,12 +287,13 @@ int automatic(IMap& target, IVector x, IVector p, int max_number, int max_deriva
 
 
         state.tolerance /= 2.;
+        cerr << state.tolerance << endl;////////////////////////////
 
-    } while (!state.special.empty() && state.tolerance > 1e-5);
+    } while (!state.special.empty() && state.tolerance > AUTO_TOLERANCE);
 
     if (!state.special.empty())
 
-        return(AUTO_TOLERANCE);
+        return(ERROR_AUTO_TOLERANCE);
 
     vector<vector<IVector>> regular_components;
 
@@ -359,31 +303,38 @@ int automatic(IMap& target, IVector x, IVector p, int max_number, int max_deriva
 
 }
 
+Statistics statistics;
+
 int main()
 {
-
     int max_derivative = 3; // maximum multiplicity
 
     int max_number = 5;
 
     IMap target = get_target(max_derivative);
-    //IMap target("par:a,b,c;var:x;fun:(a*x)+(b*(x^2))+(c*(x^3));", max_derivative);
 
     IVector x(1), p(3);
 
-    const double R = 0.3;
-    interval radius = interval(-R, R);
+    x[0] = interval(-1.0, 1.0);///interval(0.2101, 0.22);
 
-    x[0] = interval(-R - 0.001, R);   // phase variable
-
-    p[0] = interval(-1.) + radius;
-    p[1] = interval(2.) + radius;
-    p[2] = interval(1.) + radius;
+    p[0] = interval(-1.) + interval(-0.0, 0.5);
+    p[1] = interval(2.) + interval(-0.0, 0.5);
+    p[2] = interval(1.) + interval(-0.0, 0.5);
 
     double tolerance = 1e-1;
 
-    int result = automatic(target, x, p, max_number, max_derivative, tolerance); cout << "Result is " << result << endl;
-    //manual(target, max_number, max_derivative, x, p, tolerance);
+    int result = automatic(target, x, p, max_number, max_derivative, tolerance);
+
+    if (result == 0)
+        cout << "Success! Maximum of " << max_number << " fixed points in " << p << "." << endl;
+    else
+        cout << "Failed with error code " << result << "." << endl;
+
+    cout << "\nStatistics:" << endl;
+    cout << "no_bifurcation = " << statistics.no_bifurcation << endl;
+    cout << "max_derivative = " << statistics.max_derivative << endl;
+    cout << "max_subdivisions = " << statistics.max_subdivisions << endl;
+    cout << "max_number = " << statistics.max_number << endl;
 
     return(0);
 

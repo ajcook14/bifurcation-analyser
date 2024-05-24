@@ -17,4 +17,7 @@ void bisection(IMap& target, IVector x, State& state);
 
 int newton_method(IMap& target, IVector x, IVector p);
 
+void find_connected_components(vector<IVector>& intervals, vector<vector<IVector>>& components);
+
 int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, double tolerance);
+

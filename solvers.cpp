@@ -240,12 +240,14 @@ int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
 
     /**
         Subdivides all intervals and throws away any infeasible intervals.
-        Halts when the change in total measure is smaller than tolerance.
+        Halts when the change in total measure is smaller than tolerance, or
+        when there are no intervals left, or when no intervals have been removed
+        after REFINE_MAX_SUBDIVISIONS subdivisions.
         The tolerance should be chosen so it only halts when the total measure
-        plateaus due to the fact that target is a parameterised family of functions.
+        plateaus.
     **/
 
-    double measure, difference;
+    double measure, current_measure, difference;
 
     vector<IVector> temp;
 
@@ -253,11 +255,11 @@ int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
 
     IVector left(1), right(1);
 
+    double init_measure = total_measure(intervals);
+
+    int timeout = 0;
+
     do {
-
-        if (intervals.empty())
-
-            return(ERROR_NO_BIFURCATION);
 
         measure = total_measure(intervals);
 
@@ -280,9 +282,19 @@ int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
 
         }
 
-        difference = measure - total_measure(intervals);
+        if (intervals.empty())
 
-        //if (total_measure(intervals) == 0.) exit(0); // can we do this?
+            return(ERROR_NO_BIFURCATION);
+
+        current_measure = total_measure(intervals);
+
+        if (timeout == REFINE_MAX_SUBDIVISIONS && init_measure - current_measure == 0.)
+
+            return(ERROR_MAX_SUBDIVISIONS);
+
+        timeout++;
+
+        difference = measure - current_measure;
 
     } while ( difference > tolerance || difference == 0 );
 
@@ -290,45 +302,81 @@ int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
 
 }
 
-
-
-void connected_components(vector<IVector>& intervals, vector<vector<IVector>>& components)
+void find_connected_components(vector<IVector>& intervals, vector<vector<IVector>>& components)
 {
 
     /**
-        Assumes the IVectors in intervals are dimension 1 only.
         Writes the connected components of intervals to components.
-        The vector intervals will get sorted into connected components.
+        The vector intervals will get "sorted" into connected components.
     **/
 
-    std::sort(intervals.begin(), intervals.end(), [](IVector &a, IVector &b) { return(midVector(a)[0].leftBound() < midVector(b)[0].leftBound()); });
+    int n = intervals.size();
 
-    vector<IVector> component;
+    int a[n];
 
-    component.push_back(intervals[0]);
+    int c_index = 1;
 
-    vector<IVector>::iterator interval_it;
+    int k = 0;  // end index of current component
 
-    for (int i = 0; i < intervals.size() - 1; i++)
-    {
+    for (int i = 0; i < n; i++) {
 
-        if ( !intersectionIsEmpty( intervals[i], intervals[i + 1] ) ) component.push_back(intervals[i + 1]);
+        a[i] = c_index;
 
-        else {
+        for (int j = k + 1; j < n; j++) {
 
-            components.push_back(component);
+            if ( !intersectionIsEmpty( intervals[i], intervals[j] ) ) {
 
-            component.clear();
+                k++;
 
-            component.push_back(intervals[i + 1]);
+                std::swap( intervals[k], intervals[j] );
+
+            }
+
+        }
+
+        if (k == i) {
+
+            if (i < n) {
+
+                c_index++;
+
+                k++;
+
+            }
+
+            else break;
 
         }
 
     }
 
-    components.push_back(component);    // append remaining component
+    // now write to components
+
+    c_index = 1;
+
+    vector<IVector> component;
+
+    for (int i = 0; i < n; i++) {
+
+        if (a[i] > c_index) {
+
+            components.push_back(component);
+
+            component.clear();
+
+            c_index++;
+
+        }
+
+        component.push_back(intervals[i]);
+
+    }
+
+    if ( n > 0 ) components.push_back(component);
 
 }
+
+
 
 
 
@@ -355,7 +403,7 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
 
     vector<vector<IVector>> components;
 
-    connected_components(feasible, components);
+    find_connected_components(feasible, components);
 
 
 
