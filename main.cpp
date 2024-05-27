@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 using namespace std;
 using namespace capd;
@@ -49,6 +50,13 @@ void bifurcation_order_wrapper(IMap& target, State& state, IVector x, int max_nu
 
     for_each (state.special.begin(), state.special.end(), [&](IVector p) {
 
+        cout << '\r';
+        cout << setw(10) << right << state.regular.size()
+        << setw(10) << right << state.special.size()
+        << setw(10) << right << state.verified.size()
+        << setw(10) << right << new_special.size()
+        << setw(15) << right << state.tolerance << flush;
+
         bound = bifurcation_order(target, x, p, max_derivative, state.tolerance);
 
         update_statistics(bound, max_number);
@@ -66,6 +74,8 @@ void bifurcation_order_wrapper(IMap& target, State& state, IVector x, int max_nu
             state.verified.push_back(p);
 
     });
+
+    cout << endl;
 
     state.special.clear();
 
@@ -279,6 +289,12 @@ int automatic(IMap& target, IVector x, IVector p, int max_number, int max_deriva
 
     state.tolerance = tolerance;
 
+    cout << setw(10) << right << "regular"
+    << setw(10) << right << "special"
+    << setw(10) << right << "verified"
+    << setw(10) << right << "new_special"
+    << setw(15) << right << "tolerance" << endl;
+
     do {
 
         bisection(target, x, state); // subdivides special boxes
@@ -287,7 +303,6 @@ int automatic(IMap& target, IVector x, IVector p, int max_number, int max_deriva
 
 
         state.tolerance /= 2.;
-        cerr << state.tolerance << endl;////////////////////////////
 
     } while (!state.special.empty() && state.tolerance > AUTO_TOLERANCE);
 
@@ -307,6 +322,7 @@ Statistics statistics;
 
 int main()
 {
+
     int max_derivative = 3; // maximum multiplicity
 
     int max_number = 5;
@@ -318,15 +334,15 @@ int main()
     x[0] = interval(-1.0, 1.0);///interval(0.2101, 0.22);
 
     p[0] = interval(-1.) + interval(-0.0, 0.5);
-    p[1] = interval(2.) + interval(-0.0, 0.5);
-    p[2] = interval(1.) + interval(-0.0, 0.5);
+    p[1] = interval(2.) + interval(-0.5, 0.5);
+    p[2] = interval(1.) + interval(-0.5, 0.5);
 
     double tolerance = 1e-1;
 
     int result = automatic(target, x, p, max_number, max_derivative, tolerance);
 
     if (result == 0)
-        cout << "Success! Maximum of " << max_number << " fixed points in " << p << "." << endl;
+        cout << "\n\nSuccess! Maximum of " << max_number << " fixed points in " << p << "." << endl;
     else
         cout << "Failed with error code " << result << "." << endl;
 
