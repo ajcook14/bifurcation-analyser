@@ -13,3 +13,4 @@ components/*
 special
 test
 .idea/*
+manual.cpp

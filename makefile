@@ -13,10 +13,10 @@ neuron.o: neuron.cpp neuron.h
 	g++ -pg -g neuron.cpp -c -o neuron.o -O2 `capd-config --cflags`
 
 main: main.o small_funcs.o solvers.o neuron.o
-	g++ -pg -g $? -o $@ `capd-config --libs`
+	g++ -pg -g $+ -o $@ `capd-config --libs`
 
 test: capd_test.cpp
-	g++ $? -o $@ -O2 `capd-config --cflags --libs`
+	g++ $+ -o $@ -O2 `capd-config --cflags --libs`
 
 clean:
 	rm -f *.o main test
