@@ -1,8 +1,9 @@
-extern struct Statistics {
+//
+// Created by andrew on 26/05/24.
+//
 
-    int no_bifurcation = 0;
-    int max_derivative = 0;
-    int max_subdivisions = 0;
-    int max_number = 0;
+#ifndef BIFURCATION_ANALYSER_MAIN_H
+#define BIFURCATION_ANALYSER_MAIN_H
 
-} statistics;
+#endif //BIFURCATION_ANALYSER_MAIN_H
+

@@ -37,7 +37,7 @@ if __name__ == '__main__':
     for i, component_name in enumerate(cnames):
 
         f = open(f'./components/{component_name}')
-        
+
         boxes = []
 
         while not (line := f.readline()) == '':
@@ -77,4 +77,3 @@ if __name__ == '__main__':
     ax.set_ylabel('$a$')
 
     plt.show()
-

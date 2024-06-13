@@ -26,9 +26,9 @@ Node dtanh(Node x) {
 }
 
 void neuron(Node t,
-        Node in[], int dimIn,
-        Node out[], int dimOut,
-        Node params[], int noParam)
+            Node in[], int dimIn,
+            Node out[], int dimOut,
+            Node params[], int noParam)
 {
 
     assert(dimIn == 1);
@@ -47,9 +47,9 @@ void neuron(Node t,
 }
 
 void small_net(Node t,
-        Node in[], int dimIn,
-        Node out[], int dimOut,
-        Node params[], int noParam)
+               Node in[], int dimIn,
+               Node out[], int dimOut,
+               Node params[], int noParam)
 {
 
     assert(dimIn == 1);

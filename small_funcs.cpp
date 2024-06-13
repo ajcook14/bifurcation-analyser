@@ -1,4 +1,5 @@
 #include "capd/capdlib.h"
+#include "solvers.h"
 #include "small_funcs.h"
 
 #include <iostream>
@@ -49,5 +50,18 @@ void subdivide(IVector& x, IVector& left, IVector& right)
 
     left[max_dim] = interval(x[max_dim].leftBound(), mid(x[max_dim]).rightBound());
     right[max_dim] = interval(mid(x[max_dim]).leftBound(), x[max_dim].rightBound());
+
+}
+
+void subdivide(SpecialBox& s_box, SpecialBox& left, SpecialBox& right)
+{
+
+    left = s_box;
+    right = s_box;
+
+    int max_dim = arg_max_dim(s_box.parameters);
+
+    left.parameters[max_dim] = interval(s_box.parameters[max_dim].leftBound(), mid(s_box.parameters[max_dim]).rightBound());
+    right.parameters[max_dim] = interval(mid(s_box.parameters[max_dim]).leftBound(), s_box.parameters[max_dim].rightBound());
 
 }
