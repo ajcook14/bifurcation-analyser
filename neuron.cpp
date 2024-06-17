@@ -63,7 +63,8 @@ void small_net(Node t,
 
     //out[0] = (a * dtanh((a * x) + b)) + (c * dtanh(c * x)) - 1;
     //out[0] = (a * x) + (b * (x^2)) + (c * (x^3));
-    out[0] = tanh(2 * (x - a)) + tanh(b * (x - c)) - x;
+    Node layer1 = tanh(2 * (x - a)) + tanh(b * (x - c)) - x;
+    out[0] = tanh(layer1);
 
 }
 

@@ -11,6 +11,7 @@
 using namespace std;
 using namespace capd;
 
+extern Statistics statistics;
 
 
 int bisection_aux(IMap& target, IVector x, IVector p, double tolerance)
@@ -247,6 +248,9 @@ int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
         plateaus.
     **/
 
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto t2 = std::chrono::high_resolution_clock::now();
+
     double measure, current_measure, difference;
 
     vector<IVector> temp;
@@ -282,24 +286,27 @@ int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
 
         }
 
-        if (intervals.empty())
-
-            return(ERROR_NO_BIFURCATION);
-
+        if (intervals.empty()) {
+            t2 = std::chrono::high_resolution_clock::now();
+            statistics.refine_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+            return (NO_SOLUTION);
+        }
         current_measure = total_measure(intervals);
 
-        if (timeout == REFINE_MAX_SUBDIVISIONS && init_measure - current_measure == 0.)
-
-            return(ERROR_MAX_SUBDIVISIONS);
-
+        if (timeout == REFINE_MAX_SUBDIVISIONS && init_measure - current_measure == 0.) {
+            t2 = std::chrono::high_resolution_clock::now();
+            statistics.refine_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+            return (ERROR_MAX_SUBDIVISIONS);
+        }
         timeout++;
 
         difference = measure - current_measure;
 
     } while ( difference > tolerance || difference == 0 );
 
+    t2 = std::chrono::high_resolution_clock::now();
+    statistics.refine_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
     return(0);
-
 }
 
 void find_connected_components(vector<IVector>& intervals, vector<vector<IVector>>& components)
@@ -310,75 +317,48 @@ void find_connected_components(vector<IVector>& intervals, vector<vector<IVector
         The vector intervals will get "sorted" into connected components.
     **/
 
+    auto t1 = std::chrono::high_resolution_clock::now();
+
     int n = intervals.size();
-
     int a[n];
-
     int c_index = 1;
-
     int k = 0;  // end index of current component
 
     for (int i = 0; i < n; i++) {
-
         a[i] = c_index;
-
         for (int j = k + 1; j < n; j++) {
-
             if ( !intersectionIsEmpty( intervals[i], intervals[j] ) ) {
-
                 k++;
-
                 std::swap( intervals[k], intervals[j] );
-
             }
-
         }
 
         if (k == i) {
-
             if (i < n) {
-
                 c_index++;
-
                 k++;
-
             }
-
             else break;
-
         }
-
     }
 
     // now write to components
 
     c_index = 1;
-
     vector<IVector> component;
-
     for (int i = 0; i < n; i++) {
-
         if (a[i] > c_index) {
-
             components.push_back(component);
-
             component.clear();
-
             c_index++;
-
         }
-
         component.push_back(intervals[i]);
-
     }
-
     if ( n > 0 ) components.push_back(component);
 
+    auto t2 = std::chrono::high_resolution_clock::now();
+    statistics.components_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 }
-
-
-
-
 
 int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, double tolerance)
 {
@@ -389,6 +369,7 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
         tolerance should be of similar order of magnitude to the diameter of p. See documentation for refine_measure.
     **/
 
+
     for (int i = 0; i < p.dimension(); i++) target.setParameter(i, p[i]);
 
     vector<IVector> feasible;
@@ -397,15 +378,19 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
 
     int error;
 
-    if ( (error = refine_measure(target, feasible, tolerance)) < 0 )
-
-        return(error);
+    if ( (error = refine_measure(target, feasible, tolerance)) < 0 ) {
+        ////t2 = std::chrono::high_resolution_clock::now();
+        ////statistics.order_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+        return (error);
+    }
 
     vector<vector<IVector>> components;
 
     find_connected_components(feasible, components);
 
 
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto t2 = std::chrono::high_resolution_clock::now();
 
     int dimOut, dimIn;
     dimOut = dimIn = 1;
@@ -418,45 +403,36 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
     vector<IVector>::iterator interval_it;
 
     int estimate = 0;
-
     int n_intervals = 0;
 
     for (comp_it = components.begin(); comp_it != components.end(); comp_it++)
     {
-
         for (int order = 1; order <= max_derivative + 1; order++)
         {
-
-            if ( order == max_derivative + 1 )
-
-                return(ERROR_MAX_DERIVATIVE);
+            if ( order == max_derivative + 1 ) {
+                t2 = std::chrono::high_resolution_clock::now();
+                statistics.order_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+                return (ERROR_MAX_DERIVATIVE);
+            }
 
             n_intervals = 0;
 
             for (interval_it = comp_it->begin(); interval_it != comp_it->end(); interval_it++)
             {
-
                 target(*interval_it, jet);
-
                 mp = jet.first(order);
-
                 if ( !containsZero(jet(mp)) ) n_intervals++;
-
             }
 
             if ( n_intervals == comp_it->size() ) {
-
                 estimate += order;
-
                 break;
-
             }
-
         }
-
     }
 
+    t2 = std::chrono::high_resolution_clock::now();
+    statistics.order_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
     return(estimate);
-
 }
 

@@ -12,5 +12,5 @@ regular*
 components/*
 special
 test
-.idea/*
 manual.cpp
+cmake-build-debug/
