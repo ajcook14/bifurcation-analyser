@@ -12,5 +12,4 @@ regular*
 components/*
 special
 test
-manual.cpp
 cmake-build-debug/

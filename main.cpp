@@ -64,52 +64,36 @@ void bifurcation_order_wrapper(IMap& target, State& state, IVector x, int max_nu
 
 int newton_wrapper(IMap& target, vector<vector<IVector>>& regular_components, int max_number, IVector x, bool verbose)
 {
-
     /**
         Verifies the conjectured maximum number of solutions, max_number, for a single point in each component in regular_components.
     **/
 
     int result;
-
     IVector x_newton, p;
 
-    for (int i = 0; i < regular_components.size(); i++)
+    for (auto & regular_component : regular_components)
     {
-
         x_newton = x;
 
-        p = regular_components[i][0];
+        p = regular_component[0];
         p = midVector(p);
 
         while ( (result = newton_method(target, x_newton, p)) == NEWTON_DOUBLE_COUNT )
         {
-
             if(verbose) cout << "Double counted solution" << endl;
-
             x_newton[0] += interval(0, 1e-5);
-
             if(verbose) cout << "\\x = " << x_newton << " and \\p = " << p << endl;
-
         }
 
         if ( result == NEWTON_EPSILON_WIDTH ) {
-
             if(verbose) cout << "Couldn't resolve solutions - try a smaller inflation or different parameters" << endl;
-
             return(NEWTON_EPSILON_WIDTH);
-
         } else if ( result > max_number ) {
-
             if(verbose) cout << "Newton-verified number of solutions for parameters " << p << " is " << result << ". Terminating." << endl;
-
             return(-3);
-
         }
-
     }
-
     return(0);
-
 }
 
 int automatic(IMap& target, IVector x, IVector p, int max_number, int max_derivative, double tolerance)
@@ -135,6 +119,7 @@ int automatic(IMap& target, IVector x, IVector p, int max_number, int max_deriva
 
     vector<vector<IVector>> regular_components;
     find_connected_components(state.regular, regular_components);
+    cout << "\nthere are " << regular_components.size() << " regular components" << endl;
     return(newton_wrapper(target, regular_components, max_number, x, false));
 }
 
@@ -143,15 +128,17 @@ int main()
     int max_derivative = 3; // maximum multiplicity
     int max_number = 5;
 
-    IMap target = get_target(max_derivative);
+    int phase_dim = 1;
+    int param_dim = 2;
 
-    IVector x(1), p(3);
+    IMap target = get_target(max_derivative, phase_dim, param_dim);
 
-    x[0] = interval(-1, 1);//(0.2101, 0.22);
+    IVector x(1), p(2);
 
-    p[0] = interval(-1.) + interval(-0.0, 0.5);
-    p[1] = interval(2.) + interval(-0.5, 0.5);
-    p[2] = interval(1.) + interval(-0.5, 0.5);
+    x[0] = interval(-2, 2);//(0.2101, 0.22);
+
+    p[0] = interval(0.5, 1.0);
+    p[1] = interval(0.5, 1.0);
 
     double tolerance = 1e-1;
 
@@ -163,10 +150,11 @@ int main()
         << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count()
         << " microseconds" << endl;
 
-    if (result == 0)
+    if (result == 0) {
         cout << "\n\nSuccess! Maximum of " << max_number << " fixed points in " << p << "." << endl;
-    else
+    } else {
         cout << "Failed with error code " << result << "." << endl;
+    }
 
     cout << "\nStatistics:" << endl;
     cout << "no_solution = " << statistics.no_solution << endl;
