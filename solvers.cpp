@@ -128,67 +128,54 @@ int newton_method(IMap& target, IVector x, IVector p)
     for (int i = 0; i < p.dimension(); i++) target.setParameter(i, p[i]);
 
     IVector midpoint, N, left, right, epsilon(1);
-
     epsilon[0] = interval(-1e-17, 1e-17);
-
     queue<IVector> bisection_queue;
-
     bisection_queue.push(x);
 
-    // interval bisection
-
     list<IVector> verified;
-
     while ( !bisection_queue.empty() )
     {
-
         x = bisection_queue.front();
-
         bisection_queue.pop();
 
-        if ( min_dim(x) < 4 * width(epsilon[0]) ) return(NEWTON_EPSILON_WIDTH);   // check min dimension of x is at least twice width(epsilon)
-
-        if ( !containsZero(target(x)) ) continue;
-
+        if ( min_dim(x) < 4 * width(epsilon[0]) ) {
+            return(NEWTON_EPSILON_WIDTH);   // check min dimension of x is at least twice width(epsilon)
+        }
+        if ( !containsZero(target(x)) ) {
+            continue;
+        }
         if ( containsZero(target.derivative(x)) ) {
-
             subdivide(x, left, right);
 
             bisection_queue.push(left);
             bisection_queue.push(right);
 
             continue;
-
         }
 
         midpoint = midVector(x);
         N = newton::NewtonOperator(midpoint, x, target);
-
         if ( subset(N, x) ) {
-
             verified.push_back(x);
             continue;
-
         }
-
-        if ( intersectionIsEmpty(N, x) ) continue;
+        if ( intersectionIsEmpty(N, x) ) {
+            continue;
+        }
 
         // all other cases:
 
         if ( subset(x, N) ) {
-
             subdivide(x, left, right);
 
             bisection_queue.push(left);
             bisection_queue.push(right);
-
         }
 
         //left += epsilon;
         //right += epsilon;
 
         bisection_queue.push(intersection(N, x));
-
     }
 
     // check verified list is pairwise disjoint
@@ -200,19 +187,13 @@ int newton_method(IMap& target, IVector x, IVector p)
         j++;
 
         for (; j != verified.end(); j++) {
-
             if ( intersectionIsEmpty(*i, *j) ) continue;
-
             if ( !containsZero(target(intersection(*i, *j))) ) continue;
-
             return(NEWTON_DOUBLE_COUNT); // double counted solution
-
         }
-
     }
 
-    return(verified.size());
-
+    return((int) verified.size());
 }
 
 
@@ -264,26 +245,22 @@ int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
     int timeout = 0;
 
     do {
-
         measure = total_measure(intervals);
-
         temp.clear();
 
         for (i = intervals.begin(); i != intervals.end(); i++) {
-
             subdivide(*i, left, right);
 
             temp.push_back(left);
             temp.push_back(right);
-
         }
 
         intervals.clear();
 
         for (i = temp.begin(); i != temp.end(); i++) {
-
-            if ( containsZero(target(*i)) ) intervals.push_back(*i);
-
+            if ( containsZero(target(*i)) ) {
+                intervals.push_back(*i);
+            }
         }
 
         if (intervals.empty()) {
@@ -298,10 +275,9 @@ int refine_measure(IMap& target, vector<IVector>& intervals, double tolerance)
             statistics.refine_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
             return (ERROR_MAX_SUBDIVISIONS);
         }
+
         timeout++;
-
         difference = measure - current_measure;
-
     } while ( difference > tolerance || difference == 0 );
 
     t2 = std::chrono::high_resolution_clock::now();
@@ -360,6 +336,8 @@ void find_connected_components(vector<IVector>& intervals, vector<vector<IVector
     statistics.components_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 }
 
+bool print_params = false;/////////////
+
 int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, double tolerance)
 {
 
@@ -377,6 +355,10 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
     feasible.push_back(x);
 
     int error;
+
+    if (print_params) {
+        cout << "print_params: " << p << endl;////////////////
+    }
 
     if ( (error = refine_measure(target, feasible, tolerance)) < 0 ) {
         ////t2 = std::chrono::high_resolution_clock::now();

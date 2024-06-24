@@ -71,11 +71,11 @@ int newton_wrapper(IMap& target, vector<vector<IVector>>& regular_components, in
     int result;
     IVector x_newton, p;
 
-    for (auto & regular_component : regular_components)
+    for (auto & comp : regular_components)
     {
         x_newton = x;
 
-        p = regular_component[0];
+        p = comp[0];
         p = midVector(p);
 
         while ( (result = newton_method(target, x_newton, p)) == NEWTON_DOUBLE_COUNT )
@@ -86,17 +86,22 @@ int newton_wrapper(IMap& target, vector<vector<IVector>>& regular_components, in
         }
 
         if ( result == NEWTON_EPSILON_WIDTH ) {
-            if(verbose) cout << "Couldn't resolve solutions - try a smaller inflation or different parameters" << endl;
+            if(verbose) {
+                cout << "Couldn't resolve solutions for parameters " << p
+                << " - try a smaller inflation or different parameters" << endl;
+            }
             return(NEWTON_EPSILON_WIDTH);
         } else if ( result > max_number ) {
-            if(verbose) cout << "Newton-verified number of solutions for parameters " << p << " is " << result << ". Terminating." << endl;
+            if(verbose) {
+                cout << "Newton-verified number of solutions for parameters " << p << " is " << result << ". Terminating." << endl;
+            }
             return(-3);
         }
     }
     return(0);
 }
 
-int automatic(IMap& target, IVector x, IVector p, int max_number, int max_derivative, double tolerance)
+int prove_bound(IMap& target, IVector x, IVector p, int max_number, int max_derivative, double tolerance)
 {
     State state;
     state.special.push_back(p);
@@ -109,13 +114,15 @@ int automatic(IMap& target, IVector x, IVector p, int max_number, int max_deriva
          << setw(15) << left << "tolerance" << endl;
 
     do {
+        if(state.tolerance < 4e-4) {print_params = true;}////////////////////
         bisection(target, x, state); // subdivides special boxes
         bifurcation_order_wrapper(target, state, x, max_number, max_derivative);
+        if(state.tolerance < 4e-4) {break;}////////////////////
         state.tolerance /= 2.;
-    } while (!state.special.empty() && state.tolerance > AUTO_TOLERANCE);
+    } while (!state.special.empty() && state.tolerance > PROVE_TOLERANCE);
 
     if (!state.special.empty())
-        return(ERROR_AUTO_TOLERANCE);
+        return(ERROR_PROVE_TOLERANCE);
 
     vector<vector<IVector>> regular_components;
     find_connected_components(state.regular, regular_components);
@@ -135,18 +142,18 @@ int main()
 
     IVector x(1), p(2);
 
-    x[0] = interval(-2, 2);//(0.2101, 0.22);
+    x[0] = interval(-2, 2 + 1e-1);//(0.2101, 0.22);
 
-    p[0] = interval(0.5, 1.0);
-    p[1] = interval(0.5, 1.0);
+    p[0] = interval(0.65, 0.7);
+    p[1] = interval(0.65, 0.7);
 
     double tolerance = 1e-1;
 
     auto t1 = std::chrono::high_resolution_clock::now();
-    int result = automatic(target, x, p, max_number, max_derivative, tolerance);
+    int result = prove_bound(target, x, p, max_number, max_derivative, tolerance);
     auto t2 = std::chrono::high_resolution_clock::now();
 
-    std::cout << "\nautomatic took "
+    std::cout << "\nprove_bound took "
         << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count()
         << " microseconds" << endl;
 
