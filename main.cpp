@@ -4,10 +4,13 @@
 #include "solvers.h"
 #include "neuron.h"
 #include "capd_error.h"
+#include "print_state.h"
 
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <cstdlib>
+#include <cmath>
 
 using namespace std;
 using namespace capd;
@@ -28,6 +31,24 @@ void update_statistics(int bound, int max_number)
         statistics.max_number++;
 }
 
+int iterate_tolerance(IMap& target, IVector x, IVector p, int max_derivative, int max_number, double tolerance)
+{
+    const double init = 1.1e-1;
+    assert(tolerance < init);
+    int bound;
+    for (double delta = init; delta > tolerance; delta /= 2.) {
+        bound = bifurcation_order(target, x, p, max_derivative, delta);
+        if(bound < 0) {
+            continue;
+        }
+        if(bound > max_number) {
+            continue;
+        }
+        return(bound);
+    }
+    return(bound);
+}
+
 void bifurcation_order_wrapper(IMap& target, State& state, IVector x, int max_number, int max_derivative)
 {
     /**
@@ -38,23 +59,24 @@ void bifurcation_order_wrapper(IMap& target, State& state, IVector x, int max_nu
     int bound;
 
     for_each (state.special.begin(), state.special.end(), [&](IVector p) {
+        bound = iterate_tolerance(target, x, p, max_derivative, max_number, state.tolerance);
+
+        update_statistics(bound, max_number);
+
+        if (bound == NO_SOLUTION ) {
+            state.regular.push_back(p);
+        } else if ( bound == ERROR_MAX_DERIVATIVE || bound == ERROR_MAX_SUBDIVISIONS || bound > max_number ) {
+            new_special.push_back(p);
+        } else {
+            state.verified.push_back(p);
+        }
+
         cout << '\r';
         cout << setw(10) << right << state.regular.size()
              << setw(10) << right << state.special.size()
              << setw(10) << right << state.verified.size()
              << setw(13) << right << new_special.size() << "  "
              << setw(15) << left << state.tolerance << flush;
-
-        bound = bifurcation_order(target, x, p, max_derivative, state.tolerance);
-
-        update_statistics(bound, max_number);
-
-        if (bound == NO_SOLUTION )
-            state.regular.push_back(p);
-        else if ( bound == ERROR_MAX_DERIVATIVE || bound == ERROR_MAX_SUBDIVISIONS || bound > max_number )
-            new_special.push_back(p);
-        else
-            state.verified.push_back(p);
     });
     cout << endl;
 
@@ -101,6 +123,16 @@ int newton_wrapper(IMap& target, vector<vector<IVector>>& regular_components, in
     return(0);
 }
 
+void interval_hull(vector<IVector>& intervals, IVector* hull)
+{
+    assert(!intervals.empty());
+    IVector current_hull = intervals[0];
+    for(auto & vec : intervals) {
+        current_hull = intervalHull(current_hull, vec);
+    }
+    *hull = current_hull;
+}
+
 int prove_bound(IMap& target, IVector x, IVector p, int max_number, int max_derivative, double tolerance)
 {
     State state;
@@ -113,13 +145,27 @@ int prove_bound(IMap& target, IVector x, IVector p, int max_number, int max_deri
          << setw(13) << right << "new_special" << "  "
          << setw(15) << left << "tolerance" << endl;
 
+    bool print_params = false;
+
     do {
-        if(state.tolerance < 4e-4) {print_params = true;}////////////////////
         bisection(target, x, state); // subdivides special boxes
         bifurcation_order_wrapper(target, state, x, max_number, max_derivative);
-        if(state.tolerance < 4e-4) {break;}////////////////////
+        if(state.tolerance < 1e-4) {print_params = true;}////////////////////
+        if(print_params) {
+            IVector hull;
+            interval_hull(state.special, &hull);
+            std::cout << "Interval hull of special is " << hull << std::endl;
+        }////////////////////
+        if(print_params) {
+            cout << "DIAGNOSTIC!! IGNORE SUCCESS!!" << endl;
+            break;
+        }////////////////////
         state.tolerance /= 2.;
     } while (!state.special.empty() && state.tolerance > PROVE_TOLERANCE);
+
+    if(p.dimension() == 2) {
+        print_state(state);
+    }
 
     if (!state.special.empty())
         return(ERROR_PROVE_TOLERANCE);
@@ -130,10 +176,10 @@ int prove_bound(IMap& target, IVector x, IVector p, int max_number, int max_deri
     return(newton_wrapper(target, regular_components, max_number, x, false));
 }
 
-int main()
+int main(int argc, char **argv)
 {
     int max_derivative = 3; // maximum multiplicity
-    int max_number = 5;
+    int max_number = 3;
 
     int phase_dim = 1;
     int param_dim = 2;
@@ -144,8 +190,14 @@ int main()
 
     x[0] = interval(-2, 2 + 1e-1);//(0.2101, 0.22);
 
-    p[0] = interval(0.65, 0.7);
-    p[1] = interval(0.65, 0.7);
+    vector<double> bounds(argc - 1);
+
+    for (int i = 0; i < argc - 1; i++) {
+        bounds[i] = std::strtod(argv[i + 1], nullptr);
+    }
+
+    p[0] = interval(bounds[0], bounds[1]);///(0.65, 0.7);
+    p[1] = interval(bounds[2], bounds[3]);///(0.65, 0.7);
 
     double tolerance = 1e-1;
 

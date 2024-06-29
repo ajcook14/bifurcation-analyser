@@ -18,8 +18,8 @@ def rectangles(ax, boxes, facecolor):
 
 if __name__ == '__main__':
 
-    a_bounds = (-5, 5)
-    b_bounds = (-5, 5)
+    a_bounds = (0., 2.)
+    b_bounds = (-1., 1.)
 
     fig, ax = plt.subplots(figsize=(20, 20))
 
@@ -46,11 +46,11 @@ if __name__ == '__main__':
 
         f.close()
 
-        if component_name == "special":
+        if component_name == "verified":
 
             rectangles( ax, boxes, 'r' )
 
-        elif component_name == "extra_special":
+        elif component_name == "special":
 
             rectangles( ax, boxes, 'y' )
 

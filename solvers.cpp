@@ -24,9 +24,9 @@ int bisection_aux(IMap& target, IVector x, IVector p, double tolerance)
 
     IVector left, right;
 
-    for (int i = 0; i < p.dimension(); i++)
-
+    for (std::size_t i = 0; i < p.dimension(); i++) {
         target.setParameter(i, p[i]);
+    }
 
     queue<IVector> bisection_queue;
 
@@ -125,7 +125,9 @@ int newton_method(IMap& target, IVector x, IVector p)
         Assumes there are no bifurcations in p.
     **/
 
-    for (int i = 0; i < p.dimension(); i++) target.setParameter(i, p[i]);
+    for (std::size_t i = 0; i < p.dimension(); i++) {
+        target.setParameter(i, p[i]);
+    }
 
     IVector midpoint, N, left, right, epsilon(1);
     epsilon[0] = interval(-1e-17, 1e-17);
@@ -336,29 +338,61 @@ void find_connected_components(vector<IVector>& intervals, vector<vector<IVector
     statistics.components_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 }
 
-bool print_params = false;/////////////
+void find_connected_components_1d(vector<IVector>& intervals, vector<vector<IVector>>& components)
+{
+    /**
+        Assumes the IVectors in intervals are dimension 1 only.
+        Writes the connected components of intervals to components.
+        The vector intervals will get sorted into connected components.
+    **/
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    if(!intervals.empty()) {
+        assert(intervals[0].dimension() == 1);
+    }
+
+    std::sort(intervals.begin(), intervals.end(), [](IVector &a, IVector &b) {
+        return(midVector(a)[0].leftBound() < midVector(b)[0].leftBound());
+    });
+    vector<IVector> component;
+
+    component.push_back(intervals[0]);
+
+    vector<IVector>::iterator interval_it;
+
+    for (std::size_t i = 0; i + 1 < intervals.size(); i++)
+    {
+        if ( !intersectionIsEmpty( intervals[i], intervals[i + 1] ) ) {
+            component.push_back(intervals[i + 1]);
+        } else {
+            components.push_back(component);
+            component.clear();
+            component.push_back(intervals[i + 1]);
+        }
+    }
+    components.push_back(component);    // append remaining component
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    statistics.components_dur += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+}
 
 int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, double tolerance)
 {
-
     /**
         Returns an upper bound for the number of solutions to target(x) = 0 over the region p of parameters.
         Requires knowledge of max_derivative, the maximum order of each solution.
         tolerance should be of similar order of magnitude to the diameter of p. See documentation for refine_measure.
     **/
 
-
-    for (int i = 0; i < p.dimension(); i++) target.setParameter(i, p[i]);
+    for (std::size_t i = 0; i < p.dimension(); i++) {
+        target.setParameter(i, p[i]);
+    }
 
     vector<IVector> feasible;
-
     feasible.push_back(x);
 
     int error;
-
-    if (print_params) {
-        cout << "print_params: " << p << endl;////////////////
-    }
 
     if ( (error = refine_measure(target, feasible, tolerance)) < 0 ) {
         ////t2 = std::chrono::high_resolution_clock::now();
@@ -367,9 +401,7 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
     }
 
     vector<vector<IVector>> components;
-
-    find_connected_components(feasible, components);
-
+    find_connected_components_1d(feasible, components);
 
     auto t1 = std::chrono::high_resolution_clock::now();
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -385,7 +417,7 @@ int bifurcation_order(IMap& target, IVector x, IVector p, int max_derivative, do
     vector<IVector>::iterator interval_it;
 
     int estimate = 0;
-    int n_intervals = 0;
+    long unsigned int n_intervals = 0;
 
     for (comp_it = components.begin(); comp_it != components.end(); comp_it++)
     {

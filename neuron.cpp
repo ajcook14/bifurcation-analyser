@@ -32,9 +32,9 @@ void neuron(Node t,
     Node a = params[0];
     Node b = params[1];
 
-    //out[0] = tanh((a * x) + b) - x;
+    const Node layer1 = tanh((a * x) + b);
     //out[0] = (a * dtanh(a * (x - b))) - (1./2.);
-    const Node layer1 = tanh(2 * (x - a)) + tanh(2 * (x + b));
+    //const Node layer1 = tanh(2 * (x - a)) + tanh(2 * (x + b));
     out[0] = layer1 - x;
     //out[0] = (a * x) + (b * (x^2)) + (-0.9375 * (x^3));
 }

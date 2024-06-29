@@ -3,10 +3,13 @@ project(bifurcation_analyser)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_compile_options(-std=c++17 -D__USE_FILIB__ -O2 -frounding-math -D__HAVE_MPFR__ -O2 -frounding-math -DFILIB_EXTENDED -DHAVE_SSE -I/usr/local/include)
+add_compile_options(-std=c++17 -D__USE_FILIB__ -O2 -frounding-math -D__HAVE_MPFR__ -O2 -frounding-math -DFILIB_EXTENDED -DHAVE_SSE -I/usr/local/include -Wall)
 
-add_library(libs_module main.cpp
+add_library(libs_module
+    main.cpp
     main.h
+    print_state.cpp
+    print_state.h
     capd_error.h
     neuron.cpp
     neuron.h
@@ -22,8 +25,11 @@ target_link_libraries(libs_module -lfilib)
 target_link_libraries(libs_module -lmpfr)
 target_link_libraries(libs_module -lgmp)
 
-add_executable(bifurcation_analyser main.cpp
+add_executable(bifurcation_analyser
+    main.cpp
     main.h
+    print_state.cpp
+    print_state.h
     capd_error.h
     neuron.cpp
     neuron.h
